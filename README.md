@@ -45,23 +45,128 @@ We introduce TCAM-Diff, a novel 3D medical image generation model that reduces t
 
 ---
 
+## Requirements
+
+- Python 3.8+
+- PyTorch 2.0+
+- MONAI
+- Additional dependencies in [environment.yml](environment.yml)
+
 ## Installation
 
-*(To be added with code release)*
+**Via conda:**
 
 ```bash
-# Coming soon
+conda env create -f environment.yml
+conda activate diffusion
+```
+
+**Or with pip:**
+
+```bash
+pip install -r requirements.txt
 ```
 
 ---
 
-## Usage
+## Configuration
 
-*(To be added with code release)*
+### Triplane configs (`triplanes/configs/`)
 
-### Training
+| Config | Dataset | Resolution |
+|--------|---------|------------|
+| `brain.yml` | Brain dataset | 128³ ROI |
+| `colon.yml` | Colon dataset | 512³ ROI |
+| `pancreas.yml`, `vessel.yml` | Other medical datasets | — |
 
-### Inference / Generation
+Key options: `roi_size`, `batch_size`, `n_epochs`, `optim.loss` (smoothl1, l1, l2), loss weights (`weight_ssim`, `weight_p`, `weight_tv`).
+
+### Diffusion config (`diffusion/configs/triplanes.yml`)
+
+| Option | Description |
+|--------|-------------|
+| `data.channels` | Triplane feature channels (e.g., 42) |
+| `data.image_size` | Triplane resolution (e.g., 64) |
+| `diffusion.*` | Beta schedule, timesteps |
+| `embedding.pretrained` | Path to triplane checkpoint |
+| `embedding.out_vol` | If true, decode to 3D volume during sampling |
+
+---
+
+## Training
+
+### Stage 1: Triplane Decoder
+
+Train the triplane encoder-decoder to learn compact 3D representations. This produces `features.pth` used by the diffusion stage.
+
+**Standard resolution (e.g., 128³):**
+
+```
+python triplanes_train.py --configs brain.yml --source_data /path/to/brain/data
+```
+
+**Full resolution with subsampled voxels (e.g., 512³):**
+
+```
+python train_decoder_large_triplane.py --configs colon.yml --source_data /path/to/colon/data
+```
+
+**MultiTriplane with SSIM & perceptual loss:**
+
+```
+python train_decoder_triplane.py --configs brain.yml
+```
+
+Optional flags: `--resume_training`, `--gpu_id 0`, `--mlp_dim 128 128 128 128`.
+
+**Wandb (optional):** Logging is disabled by default for publication. To enable:
+
+```
+python train_decoder_triplane.py --configs brain.yml --wandb_project my_project
+# Or use environment variables: WANDB_PROJECT, WANDB_ENTITY
+# To explicitly disable: --no_wandb
+```
+
+### Stage 2: Diffusion Model
+
+Train the diffusion model on triplane features. Ensure `diffusion/configs/triplanes.yml` points to your pretrained decoder and `features.pth`:
+
+```yaml
+embedding:
+  pretrained: "logs/ckpt.pth"
+  out_vol: true
+
+data:
+  feats_path: "logs/features.pth"
+```
+
+Run training:
+
+```
+python main.py --config triplanes.yml --doc my_experiment
+```
+
+Resume training:
+
+```
+python main.py --config triplanes.yml --doc my_experiment --resume_training
+```
+
+### Stage 3: Sampling
+
+Generate new 3D volumes:
+
+```
+python main.py --config triplanes.yml --doc my_experiment --sample
+```
+
+Outputs are written to `exp/images/` by default. Use `--image_folder` to override.
+
+---
+
+## Evaluation
+
+After sampling, volumes are saved as NumPy arrays. Use your preferred metrics (e.g., SSIM, Dice) on the generated volumes.
 
 ---
 
