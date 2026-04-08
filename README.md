@@ -166,7 +166,66 @@ Outputs are written to `exp/images/` by default. Use `--image_folder` to overrid
 
 ## Evaluation
 
-After sampling, volumes are saved as NumPy arrays. Use your preferred metrics (e.g., SSIM, Dice) on the generated volumes.
+After sampling, volumes are saved as NumPy arrays.
+
+### Reconstruction Quality
+
+We evaluate reconstruction quality using the following metrics:
+
+| Metric | Description |
+|--------|-------------|
+| **MSE** | Mean Squared Error between real and reconstructed volumes |
+| **SSIM** | Structural Similarity Index for perceptual quality |
+
+### Generative Quality — Wasserstein Distance (W-Critic)
+
+We evaluate generative quality using the **W-Critic**, a WGAN-GP based critic that estimates the Wasserstein Distance between real and generated image distributions.
+
+> 📦 W-Critic repository: [https://github.com/Fredy-Zhang/w-critic](https://github.com/Fredy-Zhang/w-critic)
+
+**Step 1 — Train the W-Critic on your dataset:**
+
+```bash
+python evaluations/wgan_gp.py \
+    --dataset $DATASET \
+    --img_size $IMG_SIZE \
+    --gpu_id $GPU_ID \
+    --data_root_real $DATA_ROOT_REAL \
+    --data_root_fake_0 $DATA_ROOT_FAKE_0 \
+    --data_root_fake_1 $DATA_ROOT_FAKE_1 \
+    --train_size $TRAIN_SIZE \
+    --val_size $VAL_SIZE \
+    --save_path $SAVE_PATH
+```
+
+**Step 2 — Evaluate Wasserstein Distance:**
+
+```bash
+python evaluations/wgan_gp.py --eval \
+    --dataset $DATASET \
+    --img_size $IMG_SIZE \
+    --gpu_id $GPU_ID \
+    --data_root_real $DATA_ROOT_REAL \
+    --data_root_fake_0 $DATA_ROOT_FAKE_0 \
+    --data_root_fake_1 $DATA_ROOT_FAKE_1 \
+    --save_path $SAVE_PATH
+```
+
+**Variable reference:**
+
+| Variable | Description |
+|----------|-------------|
+| `$DATASET` | Dataset name (e.g., `BrainTumour`, `Pancreas`, `Colon`) |
+| `$IMG_SIZE` | Slice resolution (e.g., `128`, `256`, `512`) |
+| `$GPU_ID` | GPU index to use (e.g., `0`) |
+| `$DATA_ROOT_REAL` | Path to real image slices |
+| `$DATA_ROOT_FAKE_0` | Path to generated images from model 0 (e.g., TCAM-Diff) |
+| `$DATA_ROOT_FAKE_1` | Path to generated images from model 1 (e.g., baseline) |
+| `$TRAIN_SIZE` | Number of training epochs for the critic |
+| `$VAL_SIZE` | Number of validation epochs |
+| `$SAVE_PATH` | Path to save the trained critic checkpoint (e.g., `critic.pth`) |
+
+> **Note:** A lower Wasserstein Distance indicates the generated distribution is closer to the real data distribution.
 
 ---
 
