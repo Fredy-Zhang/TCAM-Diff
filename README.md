@@ -177,11 +177,9 @@ We evaluate reconstruction quality using the following metrics:
 | **MSE** | Mean Squared Error between real and reconstructed volumes |
 | **SSIM** | Structural Similarity Index for perceptual quality |
 
-### Generative Quality — Wasserstein Distance (W-Critic)
+### Generative Quality — Wasserstein Distance ([W-Critic](https://github.com/Fredy-Zhang/w-critic))
 
 We evaluate generative quality using the **W-Critic**, a WGAN-GP based critic that estimates the Wasserstein Distance between real and generated image distributions.
-
-> 📦 W-Critic repository: [https://github.com/Fredy-Zhang/w-critic](https://github.com/Fredy-Zhang/w-critic)
 
 **Step 1 — Train the W-Critic on your dataset:**
 
